@@ -1,28 +1,29 @@
-
-import React, { useState, useEffect } from 'react';
-import { FAQ, PolicyCategory } from '../../types'; // PolicyCategory is reused for FAQ categories
-import { POLICY_CATEGORIES } from '../../constants'; // Reused for categories
-import Textarea from '../ui/Textarea';
-import Select from '../ui/Select';
-import Button from '../ui/Button';
-import { Wand2, Loader2 } from 'lucide-react'; // Changed Brain to Wand2
+import React, { useState, useEffect } from "react";
+import { FAQ, PolicyCategory } from "../../types"; // PolicyCategory is reused for FAQ categories
+import { POLICY_CATEGORIES } from "../../constants"; // Reused for categories
+import Textarea from "../ui/Textarea";
+import Select from "../ui/Select";
+import Button from "../ui/Button";
+import { Wand2, Loader2 } from "lucide-react"; // Changed Brain to Wand2
 import { GoogleGenAI } from "@google/genai";
-import { useToast } from '../../contexts/ToastContext';
+import { useToast } from "../../contexts/ToastContext";
+import { GEMINI_API_KEY } from "@/config/envs";
 
 interface FAQFormProps {
   faqToEdit?: FAQ | null;
-  onSubmit: (faq: Omit<FAQ, 'id' | 'createdAt' | 'updatedAt'> | FAQ) => void;
+  onSubmit: (faq: Omit<FAQ, "id" | "createdAt" | "updatedAt"> | FAQ) => void;
   onCancel: () => void;
 }
 
 const FAQForm: React.FC<FAQFormProps> = ({ faqToEdit, onSubmit, onCancel }) => {
   const initialFormState = {
-    question: '',
-    answer: '',
+    question: "",
+    answer: "",
     category: POLICY_CATEGORIES[0], // Default to first category
   };
 
-  const [formData, setFormData] = useState<Omit<FAQ, 'id' | 'createdAt' | 'updatedAt'>>(initialFormState);
+  const [formData, setFormData] =
+    useState<Omit<FAQ, "id" | "createdAt" | "updatedAt">>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isImprovingText, setIsImprovingText] = useState(false);
   const { addToast } = useToast();
@@ -40,27 +41,37 @@ const FAQForm: React.FC<FAQFormProps> = ({ faqToEdit, onSubmit, onCancel }) => {
     setErrors({}); // Clear errors when form opens or item changes
   }, [faqToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleImproveWriting = async () => {
-    if (!process.env.API_KEY) {
-      addToast({ type: 'error', title: 'Erro de Configuração IA', message: 'A chave de API para IA não está configurada.' });
+    if (!GEMINI_API_KEY) {
+      addToast({
+        type: "error",
+        title: "Erro de Configuração IA",
+        message: "A chave de API para IA não está configurada.",
+      });
       return;
     }
     if (!formData.answer.trim()) {
-      addToast({ type: 'info', title: 'Campo Vazio', message: 'Escreva uma resposta antes de usar a IA para melhorá-la.' });
+      addToast({
+        type: "info",
+        title: "Campo Vazio",
+        message: "Escreva uma resposta antes de usar a IA para melhorá-la.",
+      });
       return;
     }
 
     setIsImprovingText(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
       const prompt = `
 Você é um assistente de redação especializado em criar respostas claras, concisas e úteis para Perguntas Frequentes (FAQs) em um ambiente corporativo. Sua tarefa é refinar o texto da resposta a seguir.
 
@@ -79,20 +90,38 @@ ${formData.answer}
 Texto refinado da resposta:`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: "gemini-2.5-flash-preview-04-17",
         contents: prompt,
       });
 
       const improvedText = response.text;
-      if (improvedText && improvedText.trim() && improvedText.trim() !== formData.answer.trim()) {
-        setFormData(prev => ({ ...prev, answer: improvedText.trim() }));
-        addToast({ type: 'success', title: 'Texto Melhorado!', message: 'A resposta foi refinada pela IA.' });
+      if (
+        improvedText &&
+        improvedText.trim() &&
+        improvedText.trim() !== formData.answer.trim()
+      ) {
+        setFormData((prev) => ({ ...prev, answer: improvedText.trim() }));
+        addToast({
+          type: "success",
+          title: "Texto Melhorado!",
+          message: "A resposta foi refinada pela IA.",
+        });
       } else {
-        addToast({ type: 'info', title: 'Sem Mudanças Significativas', message: 'A IA considerou a resposta original adequada ou não sugeriu alterações relevantes.' });
+        addToast({
+          type: "info",
+          title: "Sem Mudanças Significativas",
+          message:
+            "A IA considerou a resposta original adequada ou não sugeriu alterações relevantes.",
+        });
       }
     } catch (error) {
       console.error("Error improving text with AI:", error);
-      addToast({ type: 'error', title: 'Erro na IA', message: 'Não foi possível melhorar o texto da resposta. Tente novamente.' });
+      addToast({
+        type: "error",
+        title: "Erro na IA",
+        message:
+          "Não foi possível melhorar o texto da resposta. Tente novamente.",
+      });
     } finally {
       setIsImprovingText(false);
     }
@@ -100,13 +129,16 @@ Texto refinado da resposta:`;
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.question.trim()) newErrors.question = 'Pergunta é obrigatória.';
-    if (formData.question.trim().length > 300) newErrors.question = 'Pergunta não pode exceder 300 caracteres.';
-    
-    if (!formData.answer.trim()) newErrors.answer = 'Resposta é obrigatória.';
-    if (formData.answer.trim().length > 5000) newErrors.answer = 'Resposta não pode exceder 5000 caracteres.';
+    if (!formData.question.trim())
+      newErrors.question = "Pergunta é obrigatória.";
+    if (formData.question.trim().length > 300)
+      newErrors.question = "Pergunta não pode exceder 300 caracteres.";
 
-    if (!formData.category) newErrors.category = 'Categoria é obrigatória.';
+    if (!formData.answer.trim()) newErrors.answer = "Resposta é obrigatória.";
+    if (formData.answer.trim().length > 5000)
+      newErrors.answer = "Resposta não pode exceder 5000 caracteres.";
+
+    if (!formData.category) newErrors.category = "Categoria é obrigatória.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -117,7 +149,12 @@ Texto refinado da resposta:`;
     if (validate()) {
       if (faqToEdit) {
         // Ensure all fields of FAQ are passed for update
-        onSubmit({ ...formData, id: faqToEdit.id, createdAt: faqToEdit.createdAt, updatedAt: faqToEdit.updatedAt });
+        onSubmit({
+          ...formData,
+          id: faqToEdit.id,
+          createdAt: faqToEdit.createdAt,
+          updatedAt: faqToEdit.updatedAt,
+        });
       } else {
         onSubmit(formData);
       }
@@ -134,12 +171,15 @@ Texto refinado da resposta:`;
         onChange={handleChange}
         error={errors.question}
         maxLength={300}
-        rows={3} 
+        rows={3}
         required
       />
       <div>
         <div className="flex justify-between items-center mb-1">
-          <label htmlFor="answer" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label
+            htmlFor="answer"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Resposta
             {true && <span className="text-red-500 ml-0.5">*</span>}
           </label>
@@ -161,14 +201,14 @@ Texto refinado da resposta:`;
           </Button>
         </div>
         <Textarea
-          label="" 
+          label=""
           id="answer"
           name="answer"
           value={formData.answer}
           onChange={handleChange}
           error={errors.answer}
           maxLength={5000}
-          rows={8} 
+          rows={8}
           required
         />
       </div>
@@ -178,15 +218,15 @@ Texto refinado da resposta:`;
         name="category"
         value={formData.category}
         onChange={handleChange}
-        options={POLICY_CATEGORIES.map(cat => ({ value: cat, label: cat }))} 
+        options={POLICY_CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
         required
       />
-      <div className="flex justify-end space-x-3 pt-4"> 
+      <div className="flex justify-end space-x-3 pt-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>
         <Button type="submit" variant="primary">
-          {faqToEdit ? 'Salvar Alterações' : 'Criar FAQ'}
+          {faqToEdit ? "Salvar Alterações" : "Criar FAQ"}
         </Button>
       </div>
     </form>

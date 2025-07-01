@@ -1,23 +1,36 @@
-
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Policy, PolicyCategory, PolicyFile } from '../types'; 
-import { POLICY_CATEGORIES } from '../constants';
-import * as policyService from '../services/policyService';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import { Policy, PolicyCategory, PolicyFile } from "../types";
+import { POLICY_CATEGORIES } from "../constants";
+import * as policyService from "../services/policyService";
 import { GoogleGenAI } from "@google/genai";
 
-import SidePanel from '../components/ui/SidePanel';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea'; 
-import Select from '../components/ui/Select'; 
-import { Plus, ShieldCheck, Loader2, Search, X as IconX, Sparkles } from 'lucide-react'; // Added Sparkles, Search
-import FilterPanel from '../components/ui/FilterPanel';
-import PolicyCard from '../components/policies/PolicyCard';
-import PolicyForm from '../components/policies/PolicyForm';
-import ConfirmDeletePolicyModal from '../components/policies/ConfirmDeletePolicyModal';
-import FileViewerModal from '../components/policies/FileViewerModal'; 
-import PolicyDetailsModal from '../components/policies/PolicyDetailsModal'; 
-import { useToast } from '../contexts/ToastContext'; 
+import SidePanel from "../components/ui/SidePanel";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Textarea from "../components/ui/Textarea";
+import Select from "../components/ui/Select";
+import {
+  Plus,
+  ShieldCheck,
+  Loader2,
+  Search,
+  X as IconX,
+  Sparkles,
+} from "lucide-react"; // Added Sparkles, Search
+import FilterPanel from "../components/ui/FilterPanel";
+import PolicyCard from "../components/policies/PolicyCard";
+import PolicyForm from "../components/policies/PolicyForm";
+import ConfirmDeletePolicyModal from "../components/policies/ConfirmDeletePolicyModal";
+import FileViewerModal from "../components/policies/FileViewerModal";
+import PolicyDetailsModal from "../components/policies/PolicyDetailsModal";
+import { useToast } from "../contexts/ToastContext";
+import { GEMINI_API_KEY } from "@/config/envs";
 
 const SIDEPANEL_TRANSITION_DURATION = 300;
 const INITIAL_POLICIES_LOAD_COUNT = 9;
@@ -25,33 +38,36 @@ const POLICIES_TO_LOAD_ON_SCROLL = 6;
 
 const PoliciesPage: React.FC = () => {
   const [allPolicies, setAllPolicies] = useState<Policy[]>([]);
-  
+
   const [isFormPanelOpen, setIsFormPanelOpen] = useState(false);
   const [policyToEdit, setPolicyToEdit] = useState<Policy | null>(null);
-  
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [policyToDelete, setPolicyToDelete] = useState<Policy | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<PolicyCategory | ''>('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState<PolicyCategory | "">("");
 
   const [isFileViewerModalOpen, setIsFileViewerModalOpen] = useState(false);
   const [viewingFile, setViewingFile] = useState<PolicyFile | null>(null);
 
-  const [isPolicyDetailsModalOpen, setIsPolicyDetailsModalOpen] = useState(false);
-  const [selectedPolicyForDetails, setSelectedPolicyForDetails] = useState<Policy | null>(null);
+  const [isPolicyDetailsModalOpen, setIsPolicyDetailsModalOpen] =
+    useState(false);
+  const [selectedPolicyForDetails, setSelectedPolicyForDetails] =
+    useState<Policy | null>(null);
 
-  const [displayedPoliciesCount, setDisplayedPoliciesCount] = useState(INITIAL_POLICIES_LOAD_COUNT);
+  const [displayedPoliciesCount, setDisplayedPoliciesCount] = useState(
+    INITIAL_POLICIES_LOAD_COUNT
+  );
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
+
   const { addToast } = useToast();
 
-  const [aiQuery, setAiQuery] = useState('');
+  const [aiQuery, setAiQuery] = useState("");
   const [aiFoundPolicy, setAiFoundPolicy] = useState<Policy | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-
 
   const loadPolicies = useCallback(() => {
     const policies = policyService.getPolicies();
@@ -65,36 +81,47 @@ const PoliciesPage: React.FC = () => {
   const handleAddPolicy = () => {
     setPolicyToEdit(null);
     requestAnimationFrame(() => {
-        setIsFormPanelOpen(true);
+      setIsFormPanelOpen(true);
     });
   };
 
   const handleEditPolicy = (policy: Policy) => {
     setPolicyToEdit(policy);
-     requestAnimationFrame(() => {
-        setIsFormPanelOpen(true);
+    requestAnimationFrame(() => {
+      setIsFormPanelOpen(true);
     });
   };
-  
+
   const handleFormPanelClose = useCallback(() => {
     setIsFormPanelOpen(false);
     setTimeout(() => {
-        setPolicyToEdit(null);
+      setPolicyToEdit(null);
     }, SIDEPANEL_TRANSITION_DURATION);
   }, []);
 
-  const handleFormSubmit = useCallback((policyData: Omit<Policy, 'id' | 'createdAt' | 'updatedAt'> | Policy) => {
-    const isEditing = 'id' in policyData;
-    if (isEditing) { 
-      policyService.updatePolicy(policyData as Policy);
-      addToast({ type: 'success', title: 'Política Atualizada!', message: `A política "${policyData.title}" foi atualizada com sucesso.` });
-    } else { 
-      policyService.addPolicy(policyData);
-      addToast({ type: 'success', title: 'Política Criada!', message: `A política "${policyData.title}" foi criada com sucesso.` });
-    }
-    loadPolicies(); 
-    handleFormPanelClose();
-  }, [loadPolicies, handleFormPanelClose, addToast]);
+  const handleFormSubmit = useCallback(
+    (policyData: Omit<Policy, "id" | "createdAt" | "updatedAt"> | Policy) => {
+      const isEditing = "id" in policyData;
+      if (isEditing) {
+        policyService.updatePolicy(policyData as Policy);
+        addToast({
+          type: "success",
+          title: "Política Atualizada!",
+          message: `A política "${policyData.title}" foi atualizada com sucesso.`,
+        });
+      } else {
+        policyService.addPolicy(policyData);
+        addToast({
+          type: "success",
+          title: "Política Criada!",
+          message: `A política "${policyData.title}" foi criada com sucesso.`,
+        });
+      }
+      loadPolicies();
+      handleFormPanelClose();
+    },
+    [loadPolicies, handleFormPanelClose, addToast]
+  );
 
   const handleDeleteRequest = (policy: Policy) => {
     setPolicyToDelete(policy);
@@ -103,14 +130,18 @@ const PoliciesPage: React.FC = () => {
 
   const handleCloseDeleteModal = useCallback(() => {
     setIsDeleteModalOpen(false);
-    setPolicyToDelete(null); 
+    setPolicyToDelete(null);
   }, []);
 
   const confirmDelete = useCallback(() => {
     if (policyToDelete) {
       policyService.deletePolicy(policyToDelete.id);
-      addToast({ type: 'success', title: 'Política Excluída!', message: `A política "${policyToDelete.title}" foi excluída.` });
-      loadPolicies(); 
+      addToast({
+        type: "success",
+        title: "Política Excluída!",
+        message: `A política "${policyToDelete.title}" foi excluída.`,
+      });
+      loadPolicies();
       handleCloseDeleteModal();
     }
   }, [policyToDelete, loadPolicies, handleCloseDeleteModal, addToast]);
@@ -118,13 +149,13 @@ const PoliciesPage: React.FC = () => {
   const handleOpenFileViewer = useCallback((file: PolicyFile) => {
     setViewingFile(file);
     setIsFileViewerModalOpen(true);
-  }, []); 
+  }, []);
 
   const handleCloseFileViewer = useCallback(() => {
     setIsFileViewerModalOpen(false);
     setTimeout(() => {
-        setViewingFile(null);
-    }, 300); 
+      setViewingFile(null);
+    }, 300);
   }, []);
 
   const handleOpenPolicyDetailsModal = useCallback((policy: Policy) => {
@@ -135,20 +166,19 @@ const PoliciesPage: React.FC = () => {
   const handleClosePolicyDetailsModal = useCallback(() => {
     setIsPolicyDetailsModalOpen(false);
     setTimeout(() => {
-        setSelectedPolicyForDetails(null);
-    }, 300); 
+      setSelectedPolicyForDetails(null);
+    }, 300);
   }, []);
 
   const filteredPolicies = useMemo(() => {
-    return allPolicies
-      .filter(policy => {
-        const searchTermLower = searchTerm.toLowerCase();
-        return (
-          (policy.title.toLowerCase().includes(searchTermLower) ||
-           policy.description.toLowerCase().includes(searchTermLower)) &&
-          (filterCategory ? policy.category === filterCategory : true)
-        );
-      })
+    return allPolicies.filter((policy) => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return (
+        (policy.title.toLowerCase().includes(searchTermLower) ||
+          policy.description.toLowerCase().includes(searchTermLower)) &&
+        (filterCategory ? policy.category === filterCategory : true)
+      );
+    });
   }, [allPolicies, searchTerm, filterCategory]);
 
   useEffect(() => {
@@ -166,20 +196,22 @@ const PoliciesPage: React.FC = () => {
   const loadMorePolicies = useCallback(() => {
     if (isLoadingMore || !hasMorePolicies) return;
     setIsLoadingMore(true);
-    setTimeout(() => { 
-      setDisplayedPoliciesCount(prev => Math.min(prev + POLICIES_TO_LOAD_ON_SCROLL, filteredPolicies.length));
+    setTimeout(() => {
+      setDisplayedPoliciesCount((prev) =>
+        Math.min(prev + POLICIES_TO_LOAD_ON_SCROLL, filteredPolicies.length)
+      );
       setIsLoadingMore(false);
     }, 500);
   }, [isLoadingMore, hasMorePolicies, filteredPolicies.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      entries => {
+      (entries) => {
         if (entries[0].isIntersecting && hasMorePolicies && !isLoadingMore) {
           loadMorePolicies();
         }
       },
-      { threshold: 1.0 } 
+      { threshold: 1.0 }
     );
 
     const currentLoaderRef = loaderRef.current;
@@ -200,9 +232,15 @@ const PoliciesPage: React.FC = () => {
       setAiFoundPolicy(null);
       return;
     }
-    if (!process.env.API_KEY) {
-      setAiError("A funcionalidade de busca com IA não está disponível (chave de API não configurada).");
-      addToast({type: 'error', title: 'Erro de Configuração IA', message: 'Chave de API não configurada.'});
+    if (!GEMINI_API_KEY) {
+      setAiError(
+        "A funcionalidade de busca com IA não está disponível (chave de API não configurada)."
+      );
+      addToast({
+        type: "error",
+        title: "Erro de Configuração IA",
+        message: "Chave de API não configurada.",
+      });
       setIsAiLoading(false);
       return;
     }
@@ -212,11 +250,11 @@ const PoliciesPage: React.FC = () => {
     setAiError(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const policySnippets = allPolicies.map(p => ({ 
-        id: p.id, 
-        title: p.title, 
-        description: p.description.substring(0, 250) + "..." 
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      const policySnippets = allPolicies.map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description.substring(0, 250) + "...",
       }));
 
       const prompt = `
@@ -234,13 +272,13 @@ Pergunta do Usuário:
 Retorne SUA RESPOSTA APENAS NO SEGUINTE FORMATO JSON: \`{"policyId": "ID_DA_POLITICA_MAIS_RELEVANTE"}\`.
 Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para determinar uma única melhor correspondência, retorne: \`{"policyId": null}\`.
 `;
-      
+
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-04-17",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-        }
+        },
       });
 
       let jsonStr = response.text.trim();
@@ -249,59 +287,89 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
       if (match && match[2]) {
         jsonStr = match[2].trim();
       }
-      
+
       const parsedResponse = JSON.parse(jsonStr);
       const foundPolicyId = parsedResponse.policyId;
 
       if (foundPolicyId) {
-        const found = allPolicies.find(p => p.id === foundPolicyId);
+        const found = allPolicies.find((p) => p.id === foundPolicyId);
         if (found) {
           setAiFoundPolicy(found);
-          addToast({type: 'success', title: 'IA Encontrou!', message: `Política "${found.title}" encontrada.`});
+          addToast({
+            type: "success",
+            title: "IA Encontrou!",
+            message: `Política "${found.title}" encontrada.`,
+          });
         } else {
-          setAiError(`A IA sugeriu uma política com ID "${foundPolicyId}", mas ela não foi encontrada no sistema.`);
-          addToast({type: 'warning', title: 'Política Não Encontrada', message: 'A IA sugeriu uma política inválida.'});
+          setAiError(
+            `A IA sugeriu uma política com ID "${foundPolicyId}", mas ela não foi encontrada no sistema.`
+          );
+          addToast({
+            type: "warning",
+            title: "Política Não Encontrada",
+            message: "A IA sugeriu uma política inválida.",
+          });
         }
       } else {
         setAiFoundPolicy(null);
-        setAiError("Nenhuma política específica foi encontrada pela IA para sua pergunta. Tente refinar sua busca ou use os filtros manuais.");
-         addToast({type: 'info', title: 'Busca IA', message: 'Nenhuma política específica encontrada pela IA.'});
+        setAiError(
+          "Nenhuma política específica foi encontrada pela IA para sua pergunta. Tente refinar sua busca ou use os filtros manuais."
+        );
+        addToast({
+          type: "info",
+          title: "Busca IA",
+          message: "Nenhuma política específica encontrada pela IA.",
+        });
       }
-
     } catch (error) {
       console.error("Error during AI search:", error);
-      setAiError("Ocorreu um erro ao tentar buscar com a IA. Por favor, tente novamente.");
-      addToast({type: 'error', title: 'Erro na Busca IA', message: 'Não foi possível completar a busca inteligente.'});
+      setAiError(
+        "Ocorreu um erro ao tentar buscar com a IA. Por favor, tente novamente."
+      );
+      addToast({
+        type: "error",
+        title: "Erro na Busca IA",
+        message: "Não foi possível completar a busca inteligente.",
+      });
     } finally {
       setIsAiLoading(false);
     }
   };
 
   const handleClearAiSearch = () => {
-    setAiQuery('');
+    setAiQuery("");
     setAiFoundPolicy(null);
     setAiError(null);
     setIsAiLoading(false);
   };
 
-
   return (
     <div>
-      <div className="mb-2"> 
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-x-2 gap-y-2"> 
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-50 flex items-center self-start sm:self-center">
-            <ShieldCheck size={30} className="mr-3 text-primary dark:text-sky-400" />
+      <div className="mb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-x-2 gap-y-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-50 flex items-center self-start sm:self-center">
+            <ShieldCheck
+              size={30}
+              className="mr-3 text-primary dark:text-sky-400"
+            />
             Políticas da Empresa
-            </h1>
-            <Button onClick={handleAddPolicy} leftIcon={<Plus size={18}/>} className="w-full sm:w-auto">
+          </h1>
+          <Button
+            onClick={handleAddPolicy}
+            leftIcon={<Plus size={18} />}
+            className="w-full sm:w-auto"
+          >
             Nova Política
-            </Button>
+          </Button>
         </div>
-        <p className="mt-1 text-gray-600 dark:text-gray-300">Acesse e gerencie todas as políticas e documentos importantes da empresa.</p>
+        <p className="mt-1 text-gray-600 dark:text-gray-300">
+          Acesse e gerencie todas as políticas e documentos importantes da
+          empresa.
+        </p>
       </div>
 
-      <FilterPanel title="Filtros" className="mb-2" initialCollapsed={true}> 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"> 
+      <FilterPanel title="Filtros" className="mb-2" initialCollapsed={true}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
           <Input
             label="Buscar por Título/Descrição"
             id="policySearchTerm"
@@ -314,20 +382,28 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
             label="Categoria"
             id="policyFilterCategory"
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value as PolicyCategory | '')}
-            options={[{ value: '', label: 'Todas' }, ...POLICY_CATEGORIES.map(cat => ({ value: cat, label: cat }))]}
+            onChange={(e) =>
+              setFilterCategory(e.target.value as PolicyCategory | "")
+            }
+            options={[
+              { value: "", label: "Todas" },
+              ...POLICY_CATEGORIES.map((cat) => ({ value: cat, label: cat })),
+            ]}
           />
         </div>
       </FilterPanel>
 
-      <FilterPanel 
-        title="Busca Inteligente" 
-        icon={<Sparkles size={18} className="mr-2 text-primary dark:text-sky-400" />}
-        className="mb-2" 
+      <FilterPanel
+        title="Busca Inteligente"
+        icon={
+          <Sparkles size={18} className="mr-2 text-primary dark:text-sky-400" />
+        }
+        className="mb-2"
         initialCollapsed={true}
       >
         <p className="text-sm text-sky-600 dark:text-sky-400 mb-3 -mt-1">
-          Faça uma pergunta em linguagem natural e a IA tentará encontrar a política mais relevante. (Experimental)
+          Faça uma pergunta em linguagem natural e a IA tentará encontrar a
+          política mais relevante. (Experimental)
         </p>
         <div className="space-y-3">
           <Textarea
@@ -339,20 +415,26 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
             className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-sky-500 dark:focus:border-sky-400 focus:ring-sky-500 dark:focus:ring-sky-400"
           />
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              onClick={handleAiSearch} 
-              disabled={isAiLoading} 
-              leftIcon={isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+            <Button
+              onClick={handleAiSearch}
+              disabled={isAiLoading}
+              leftIcon={
+                isAiLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Search size={18} />
+                )
+              }
               className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white"
             >
-              {isAiLoading ? 'Buscando...' : 'Buscar'}
+              {isAiLoading ? "Buscando..." : "Buscar"}
             </Button>
             {(aiFoundPolicy || aiError || aiQuery) && (
-               <Button 
+              <Button
                 variant="outline"
-                onClick={handleClearAiSearch} 
-                disabled={isAiLoading} 
-                leftIcon={<IconX size={18}/>}
+                onClick={handleClearAiSearch}
+                disabled={isAiLoading}
+                leftIcon={<IconX size={18} />}
                 className="w-full sm:w-auto border-sky-500 text-sky-600 hover:bg-sky-100 dark:border-sky-600 dark:text-sky-400 dark:hover:bg-sky-800"
               >
                 Limpar Busca IA
@@ -363,8 +445,13 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
 
         {isAiLoading && (
           <div className="mt-4 text-center">
-            <Loader2 size={24} className="animate-spin text-sky-600 dark:text-sky-400 inline-block" />
-            <p className="text-sm text-sky-600 dark:text-sky-400">A IA está pensando...</p>
+            <Loader2
+              size={24}
+              className="animate-spin text-sky-600 dark:text-sky-400 inline-block"
+            />
+            <p className="text-sm text-sky-600 dark:text-sky-400">
+              A IA está pensando...
+            </p>
           </div>
         )}
         {aiError && !isAiLoading && (
@@ -374,39 +461,48 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
         )}
         {aiFoundPolicy && !isAiLoading && !aiError && (
           <div className="mt-4">
-            <h4 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-2">Resultado da IA:</h4>
-            <div className="max-w-md mx-auto sm:max-w-none"> 
-                 <PolicyCard
-                    policy={aiFoundPolicy}
-                    onEdit={handleEditPolicy}
-                    onDelete={() => handleDeleteRequest(aiFoundPolicy)}
-                    onViewFile={handleOpenFileViewer} 
-                    onViewDetails={() => handleOpenPolicyDetailsModal(aiFoundPolicy)}
-                />
+            <h4 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-2">
+              Resultado da IA:
+            </h4>
+            <div className="max-w-md mx-auto sm:max-w-none">
+              <PolicyCard
+                policy={aiFoundPolicy}
+                onEdit={handleEditPolicy}
+                onDelete={() => handleDeleteRequest(aiFoundPolicy)}
+                onViewFile={handleOpenFileViewer}
+                onViewDetails={() =>
+                  handleOpenPolicyDetailsModal(aiFoundPolicy)
+                }
+              />
             </div>
           </div>
         )}
       </FilterPanel>
 
-
       {currentlyDisplayedPolicies.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"> 
-            {currentlyDisplayedPolicies.map(policy => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {currentlyDisplayedPolicies.map((policy) => (
               <PolicyCard
                 key={policy.id}
                 policy={policy}
                 onEdit={handleEditPolicy}
                 onDelete={() => handleDeleteRequest(policy)}
-                onViewFile={handleOpenFileViewer} 
+                onViewFile={handleOpenFileViewer}
                 onViewDetails={() => handleOpenPolicyDetailsModal(policy)}
               />
             ))}
           </div>
           {hasMorePolicies && (
-            <div ref={loaderRef} className="flex justify-center items-center py-6">
+            <div
+              ref={loaderRef}
+              className="flex justify-center items-center py-6"
+            >
               {isLoadingMore ? (
-                <Loader2 size={32} className="animate-spin text-primary dark:text-sky-400" />
+                <Loader2
+                  size={32}
+                  className="animate-spin text-primary dark:text-sky-400"
+                />
               ) : (
                 <Button variant="outline" onClick={loadMorePolicies}>
                   Carregar Mais Políticas
@@ -415,26 +511,41 @@ Se NENHUMA política parecer relevante ou se a pergunta for muito vaga para dete
             </div>
           )}
         </>
-      ) : !aiQuery && !aiFoundPolicy && !isAiLoading && ( 
-        <div className="text-center py-12">
-          <ShieldCheck size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-3" />
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">Nenhuma política encontrada pelos filtros manuais.</p>
-          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
-            <span>
-              {searchTerm || filterCategory ? 'Tente ajustar seus filtros ou ' : 'Você pode '}
-            </span>
-            <Button variant="link" onClick={handleAddPolicy} className="text-sm p-0">
-              adicionar uma nova política
-            </Button>
-            <span>.</span>
+      ) : (
+        !aiQuery &&
+        !aiFoundPolicy &&
+        !isAiLoading && (
+          <div className="text-center py-12">
+            <ShieldCheck
+              size={48}
+              className="mx-auto text-gray-400 dark:text-gray-500 mb-3"
+            />
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
+              Nenhuma política encontrada pelos filtros manuais.
+            </p>
+            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
+              <span>
+                {searchTerm || filterCategory
+                  ? "Tente ajustar seus filtros ou "
+                  : "Você pode "}
+              </span>
+              <Button
+                variant="link"
+                onClick={handleAddPolicy}
+                className="text-sm p-0"
+              >
+                adicionar uma nova política
+              </Button>
+              <span>.</span>
+            </div>
           </div>
-        </div>
+        )
       )}
-      
+
       <SidePanel
         isOpen={isFormPanelOpen}
         onClose={handleFormPanelClose}
-        title={policyToEdit ? 'Editar Política' : 'Criar Nova Política'}
+        title={policyToEdit ? "Editar Política" : "Criar Nova Política"}
       >
         <PolicyForm
           policyToEdit={policyToEdit}

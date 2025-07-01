@@ -1,20 +1,34 @@
-
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Suggestion, SuggestionVoteType } from '../types';
-import * as suggestionService from '../services/suggestionService';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import { Suggestion, SuggestionVoteType } from "../types";
+import * as suggestionService from "../services/suggestionService";
 import { GoogleGenAI } from "@google/genai";
 
-import SidePanel from '../components/ui/SidePanel';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
-import { Plus, Lightbulb, Loader2, Search, X as IconX, Sparkles, Wand2 } from 'lucide-react'; 
-import FilterPanel from '../components/ui/FilterPanel';
-import SuggestionCard from '../components/suggestions/SuggestionCard';
-import SuggestionForm from '../components/suggestions/SuggestionForm';
-import ConfirmDeleteSuggestionModal from '../components/suggestions/ConfirmDeleteSuggestionModal';
-import SuggestionDetailsModal from '../components/suggestions/SuggestionDetailsModal'; 
-import { useToast } from '../contexts/ToastContext'; 
+import SidePanel from "../components/ui/SidePanel";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Textarea from "../components/ui/Textarea";
+import {
+  Plus,
+  Lightbulb,
+  Loader2,
+  Search,
+  X as IconX,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
+import FilterPanel from "../components/ui/FilterPanel";
+import SuggestionCard from "../components/suggestions/SuggestionCard";
+import SuggestionForm from "../components/suggestions/SuggestionForm";
+import ConfirmDeleteSuggestionModal from "../components/suggestions/ConfirmDeleteSuggestionModal";
+import SuggestionDetailsModal from "../components/suggestions/SuggestionDetailsModal";
+import { useToast } from "../contexts/ToastContext";
+import { GEMINI_API_KEY } from "@/config/envs";
 
 const SIDEPANEL_TRANSITION_DURATION = 300;
 const INITIAL_SUGGESTIONS_LOAD_COUNT = 9;
@@ -28,39 +42,51 @@ interface AiDraftedSuggestion {
 
 const SuggestionsPage: React.FC = () => {
   const [allSuggestions, setAllSuggestions] = useState<Suggestion[]>([]);
-  
+
   const [isFormPanelOpen, setIsFormPanelOpen] = useState(false);
-  const [suggestionToEdit, setSuggestionToEdit] = useState<Suggestion | null>(null);
-  
+  const [suggestionToEdit, setSuggestionToEdit] = useState<Suggestion | null>(
+    null
+  );
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [suggestionToDelete, setSuggestionToDelete] = useState<Suggestion | null>(null);
+  const [suggestionToDelete, setSuggestionToDelete] =
+    useState<Suggestion | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const [isSuggestionDetailsModalOpen, setIsSuggestionDetailsModalOpen] = useState(false);
-  const [selectedSuggestionForDetails, setSelectedSuggestionForDetails] = useState<Suggestion | null>(null);
-  
-  const currentUserId = suggestionService.MOCK_USER_ID_SUGGESTIONS; 
+  const [isSuggestionDetailsModalOpen, setIsSuggestionDetailsModalOpen] =
+    useState(false);
+  const [selectedSuggestionForDetails, setSelectedSuggestionForDetails] =
+    useState<Suggestion | null>(null);
+
+  const currentUserId = suggestionService.MOCK_USER_ID_SUGGESTIONS;
   const { addToast } = useToast();
 
-  const [displayedSuggestionsCount, setDisplayedSuggestionsCount] = useState(INITIAL_SUGGESTIONS_LOAD_COUNT);
+  const [displayedSuggestionsCount, setDisplayedSuggestionsCount] = useState(
+    INITIAL_SUGGESTIONS_LOAD_COUNT
+  );
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const [aiDraftText, setAiDraftText] = useState('');
+  const [aiDraftText, setAiDraftText] = useState("");
   const [isAiDrafting, setIsAiDrafting] = useState(false);
   const [aiDraftError, setAiDraftError] = useState<string | null>(null);
-  const [aiGeneratedInitialData, setAiGeneratedInitialData] = useState<AiDraftedSuggestion | undefined>(undefined);
-
+  const [aiGeneratedInitialData, setAiGeneratedInitialData] = useState<
+    AiDraftedSuggestion | undefined
+  >(undefined);
 
   const loadSuggestions = useCallback(() => {
     const suggestions = suggestionService.getSuggestions();
-    setAllSuggestions(suggestions.sort((a,b) => {
+    setAllSuggestions(
+      suggestions.sort((a, b) => {
         const scoreA = a.upvotes - a.downvotes;
         const scoreB = b.upvotes - b.downvotes;
         if (scoreB !== scoreA) return scoreB - scoreA;
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    }));
+        return (
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      })
+    );
   }, []);
 
   useEffect(() => {
@@ -69,40 +95,58 @@ const SuggestionsPage: React.FC = () => {
 
   const handleAddSuggestion = (initialData?: AiDraftedSuggestion) => {
     setSuggestionToEdit(null);
-    setAiGeneratedInitialData(initialData); 
+    setAiGeneratedInitialData(initialData);
     requestAnimationFrame(() => {
-        setIsFormPanelOpen(true);
+      setIsFormPanelOpen(true);
     });
   };
 
   const handleEditSuggestion = (suggestion: Suggestion) => {
     setSuggestionToEdit(suggestion);
-    setAiGeneratedInitialData(undefined); 
+    setAiGeneratedInitialData(undefined);
     requestAnimationFrame(() => {
-        setIsFormPanelOpen(true);
+      setIsFormPanelOpen(true);
     });
   };
-  
+
   const handleFormPanelClose = useCallback(() => {
     setIsFormPanelOpen(false);
     setTimeout(() => {
-        setSuggestionToEdit(null);
-        setAiGeneratedInitialData(undefined); 
+      setSuggestionToEdit(null);
+      setAiGeneratedInitialData(undefined);
     }, SIDEPANEL_TRANSITION_DURATION);
   }, []);
 
-  const handleFormSubmit = useCallback((suggestionData: Omit<Suggestion, 'id' | 'upvotes' | 'downvotes' | 'createdAt' | 'updatedAt'> | Suggestion) => {
-    const isEditing = 'id' in suggestionData;
-    if (isEditing) { 
-      suggestionService.updateSuggestion(suggestionData as Suggestion);
-      addToast({ type: 'success', title: 'Sugestão Atualizada!', message: `Sua sugestão "${suggestionData.title}" foi atualizada.` });
-    } else { 
-      suggestionService.addSuggestion(suggestionData);
-      addToast({ type: 'success', title: 'Sugestão Enviada!', message: `Sua sugestão "${suggestionData.title}" foi enviada com sucesso.` });
-    }
-    loadSuggestions(); 
-    handleFormPanelClose();
-  }, [loadSuggestions, handleFormPanelClose, addToast]);
+  const handleFormSubmit = useCallback(
+    (
+      suggestionData:
+        | Omit<
+            Suggestion,
+            "id" | "upvotes" | "downvotes" | "createdAt" | "updatedAt"
+          >
+        | Suggestion
+    ) => {
+      const isEditing = "id" in suggestionData;
+      if (isEditing) {
+        suggestionService.updateSuggestion(suggestionData as Suggestion);
+        addToast({
+          type: "success",
+          title: "Sugestão Atualizada!",
+          message: `Sua sugestão "${suggestionData.title}" foi atualizada.`,
+        });
+      } else {
+        suggestionService.addSuggestion(suggestionData);
+        addToast({
+          type: "success",
+          title: "Sugestão Enviada!",
+          message: `Sua sugestão "${suggestionData.title}" foi enviada com sucesso.`,
+        });
+      }
+      loadSuggestions();
+      handleFormPanelClose();
+    },
+    [loadSuggestions, handleFormPanelClose, addToast]
+  );
 
   const handleDeleteRequest = (suggestion: Suggestion) => {
     setSuggestionToDelete(suggestion);
@@ -111,69 +155,87 @@ const SuggestionsPage: React.FC = () => {
 
   const handleCloseDeleteModal = useCallback(() => {
     setIsDeleteModalOpen(false);
-    setSuggestionToDelete(null); 
+    setSuggestionToDelete(null);
   }, []);
 
   const confirmDelete = useCallback(() => {
     if (suggestionToDelete) {
       suggestionService.deleteSuggestion(suggestionToDelete.id);
-      addToast({ type: 'success', title: 'Sugestão Excluída!', message: `A sugestão "${suggestionToDelete.title}" foi excluída.` });
-      loadSuggestions(); 
+      addToast({
+        type: "success",
+        title: "Sugestão Excluída!",
+        message: `A sugestão "${suggestionToDelete.title}" foi excluída.`,
+      });
+      loadSuggestions();
       handleCloseDeleteModal();
     }
   }, [suggestionToDelete, loadSuggestions, handleCloseDeleteModal, addToast]);
 
-  const handleVote = useCallback((suggestionId: string, voteType: SuggestionVoteType) => {
-    suggestionService.addOrUpdateVote(suggestionId, currentUserId, voteType);
-    
-    const votedSuggestion = allSuggestions.find(s => s.id === suggestionId);
-    if (votedSuggestion) {
-        addToast({type: 'success', title: 'Voto Registrado!', message: `Seu voto para "${votedSuggestion.title}" foi contabilizado.`});
-    }
+  const handleVote = useCallback(
+    (suggestionId: string, voteType: SuggestionVoteType) => {
+      suggestionService.addOrUpdateVote(suggestionId, currentUserId, voteType);
 
-    const updatedSuggestionsFromStorage = suggestionService.getSuggestions();
-    const newlyUpdatedSuggestion = updatedSuggestionsFromStorage.find(s => s.id === suggestionId);
+      const votedSuggestion = allSuggestions.find((s) => s.id === suggestionId);
+      if (votedSuggestion) {
+        addToast({
+          type: "success",
+          title: "Voto Registrado!",
+          message: `Seu voto para "${votedSuggestion.title}" foi contabilizado.`,
+        });
+      }
 
-    if (newlyUpdatedSuggestion) {
-      setAllSuggestions(prevSuggestions =>
-        prevSuggestions.map(s =>
-          s.id === suggestionId
-            ? { ...s, upvotes: newlyUpdatedSuggestion.upvotes, downvotes: newlyUpdatedSuggestion.downvotes }
-            : s
-        )
+      const updatedSuggestionsFromStorage = suggestionService.getSuggestions();
+      const newlyUpdatedSuggestion = updatedSuggestionsFromStorage.find(
+        (s) => s.id === suggestionId
       );
-    }
-  }, [currentUserId, addToast, allSuggestions]);
 
-  const handleOpenSuggestionDetailsModal = useCallback((suggestion: Suggestion) => {
-    setSelectedSuggestionForDetails(suggestion);
-    setIsSuggestionDetailsModalOpen(true);
-  }, []);
+      if (newlyUpdatedSuggestion) {
+        setAllSuggestions((prevSuggestions) =>
+          prevSuggestions.map((s) =>
+            s.id === suggestionId
+              ? {
+                  ...s,
+                  upvotes: newlyUpdatedSuggestion.upvotes,
+                  downvotes: newlyUpdatedSuggestion.downvotes,
+                }
+              : s
+          )
+        );
+      }
+    },
+    [currentUserId, addToast, allSuggestions]
+  );
+
+  const handleOpenSuggestionDetailsModal = useCallback(
+    (suggestion: Suggestion) => {
+      setSelectedSuggestionForDetails(suggestion);
+      setIsSuggestionDetailsModalOpen(true);
+    },
+    []
+  );
 
   const handleCloseSuggestionDetailsModal = useCallback(() => {
     setIsSuggestionDetailsModalOpen(false);
-    loadSuggestions(); 
+    loadSuggestions();
     setTimeout(() => {
-        setSelectedSuggestionForDetails(null);
-    }, 300); 
+      setSelectedSuggestionForDetails(null);
+    }, 300);
   }, [loadSuggestions]);
-
 
   const filteredSuggestions = useMemo(() => {
     let suggestionsToFilter = [...allSuggestions];
-    return suggestionsToFilter
-      .filter(suggestion => {
-        const searchTermLower = searchTerm.toLowerCase();
-        return (
-          suggestion.title.toLowerCase().includes(searchTermLower) ||
-          suggestion.description.toLowerCase().includes(searchTermLower)
-        );
-      });
+    return suggestionsToFilter.filter((suggestion) => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return (
+        suggestion.title.toLowerCase().includes(searchTermLower) ||
+        suggestion.description.toLowerCase().includes(searchTermLower)
+      );
+    });
   }, [allSuggestions, searchTerm]);
 
   useEffect(() => {
     setDisplayedSuggestionsCount(INITIAL_SUGGESTIONS_LOAD_COUNT);
-  }, [searchTerm, loadSuggestions]); 
+  }, [searchTerm, loadSuggestions]);
 
   const currentlyDisplayedSuggestions = useMemo(() => {
     return filteredSuggestions.slice(0, displayedSuggestionsCount);
@@ -186,15 +248,20 @@ const SuggestionsPage: React.FC = () => {
   const loadMoreSuggestions = useCallback(() => {
     if (isLoadingMore || !hasMoreSuggestions) return;
     setIsLoadingMore(true);
-    setTimeout(() => { 
-      setDisplayedSuggestionsCount(prev => Math.min(prev + SUGGESTIONS_TO_LOAD_ON_SCROLL, filteredSuggestions.length));
+    setTimeout(() => {
+      setDisplayedSuggestionsCount((prev) =>
+        Math.min(
+          prev + SUGGESTIONS_TO_LOAD_ON_SCROLL,
+          filteredSuggestions.length
+        )
+      );
       setIsLoadingMore(false);
     }, 500);
   }, [isLoadingMore, hasMoreSuggestions, filteredSuggestions.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      entries => {
+      (entries) => {
         if (entries[0].isIntersecting && hasMoreSuggestions && !isLoadingMore) {
           loadMoreSuggestions();
         }
@@ -216,13 +283,25 @@ const SuggestionsPage: React.FC = () => {
 
   const handleAiDraftSuggestion = async () => {
     if (!aiDraftText.trim()) {
-      setAiDraftError("Por favor, escreva sua ideia de sugestão no campo de rascunho.");
-      addToast({ type: 'info', title: 'Campo Vazio', message: 'Escreva seu rascunho antes de usar a IA.'});
+      setAiDraftError(
+        "Por favor, escreva sua ideia de sugestão no campo de rascunho."
+      );
+      addToast({
+        type: "info",
+        title: "Campo Vazio",
+        message: "Escreva seu rascunho antes de usar a IA.",
+      });
       return;
     }
-    if (!process.env.API_KEY) {
-      setAiDraftError("A funcionalidade de rascunho com IA não está disponível (chave de API não configurada).");
-      addToast({type: 'error', title: 'Erro de Configuração IA', message: 'Chave de API não configurada.'});
+    if (!GEMINI_API_KEY) {
+      setAiDraftError(
+        "A funcionalidade de rascunho com IA não está disponível (chave de API não configurada)."
+      );
+      addToast({
+        type: "error",
+        title: "Erro de Configuração IA",
+        message: "Chave de API não configurada.",
+      });
       return;
     }
 
@@ -230,7 +309,7 @@ const SuggestionsPage: React.FC = () => {
     setAiDraftError(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
       const prompt = `
 Você é um assistente de redação focado em transformar rascunhos de sugestões corporativas em textos finais claros, concisos e profissionais.
 
@@ -257,7 +336,7 @@ ${aiDraftText}
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-        }
+        },
       });
 
       let jsonStr = response.text.trim();
@@ -266,70 +345,97 @@ ${aiDraftText}
       if (match && match[2]) {
         jsonStr = match[2].trim();
       }
-      
+
       const parsedResponse = JSON.parse(jsonStr) as AiDraftedSuggestion;
 
       if (parsedResponse.title && parsedResponse.description) {
-        addToast({type: 'success', title: 'Rascunho Gerado!', message: 'A IA preparou um rascunho da sua sugestão.'});
-        handleAddSuggestion(parsedResponse); 
-        setAiDraftText(''); 
+        addToast({
+          type: "success",
+          title: "Rascunho Gerado!",
+          message: "A IA preparou um rascunho da sua sugestão.",
+        });
+        handleAddSuggestion(parsedResponse);
+        setAiDraftText("");
       } else {
-        setAiDraftError("A IA não conseguiu gerar um título ou descrição válidos. Tente refinar seu rascunho.");
-        addToast({type: 'warning', title: 'Falha na IA', message: 'Não foi possível gerar o rascunho completo.'});
+        setAiDraftError(
+          "A IA não conseguiu gerar um título ou descrição válidos. Tente refinar seu rascunho."
+        );
+        addToast({
+          type: "warning",
+          title: "Falha na IA",
+          message: "Não foi possível gerar o rascunho completo.",
+        });
       }
-
     } catch (error) {
       console.error("Error during AI suggestion drafting:", error);
-      setAiDraftError("Ocorreu um erro ao tentar gerar a sugestão com a IA. Por favor, tente novamente.");
-      addToast({type: 'error', title: 'Erro na IA', message: 'Não foi possível completar a geração do rascunho.'});
+      setAiDraftError(
+        "Ocorreu um erro ao tentar gerar a sugestão com a IA. Por favor, tente novamente."
+      );
+      addToast({
+        type: "error",
+        title: "Erro na IA",
+        message: "Não foi possível completar a geração do rascunho.",
+      });
     } finally {
       setIsAiDrafting(false);
     }
   };
-  
+
   const handleClearAiDraft = () => {
-    setAiDraftText('');
+    setAiDraftText("");
     setAiDraftError(null);
     setIsAiDrafting(false);
   };
 
-
   return (
     <div>
-      <div className="mb-2"> 
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-x-2 gap-y-2"> 
+      <div className="mb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-x-2 gap-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-50 flex items-center self-start sm:self-center">
-            <Lightbulb size={30} className="mr-3 text-primary dark:text-sky-400" />
+            <Lightbulb
+              size={30}
+              className="mr-3 text-primary dark:text-sky-400"
+            />
             Caixa de Sugestões
           </h1>
-          <Button onClick={() => handleAddSuggestion()} leftIcon={<Plus size={18}/>} className="w-full sm:w-auto">
+          <Button
+            onClick={() => handleAddSuggestion()}
+            leftIcon={<Plus size={18} />}
+            className="w-full sm:w-auto"
+          >
             Nova Sugestão
           </Button>
         </div>
-        <p className="mt-1 text-gray-600 dark:text-gray-300">Compartilhe suas ideias e contribua para a melhoria contínua da empresa.</p>
+        <p className="mt-1 text-gray-600 dark:text-gray-300">
+          Compartilhe suas ideias e contribua para a melhoria contínua da
+          empresa.
+        </p>
       </div>
 
-      <FilterPanel title="Filtros" className="mb-2" initialCollapsed={true}> 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end"> 
+      <FilterPanel title="Filtros" className="mb-2" initialCollapsed={true}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
           <Input
             label="Buscar por Título/Descrição"
             id="suggestionSearchTerm"
             placeholder="Digite para buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="md:col-span-2" 
+            className="md:col-span-2"
           />
         </div>
       </FilterPanel>
 
-      <FilterPanel 
-        title="Rascunho Inteligente" 
-        icon={<Sparkles size={18} className="mr-2 text-primary dark:text-sky-400" />} 
-        className="mb-2" 
+      <FilterPanel
+        title="Rascunho Inteligente"
+        icon={
+          <Sparkles size={18} className="mr-2 text-primary dark:text-sky-400" />
+        }
+        className="mb-2"
         initialCollapsed={true}
       >
         <p className="text-sm text-sky-600 dark:text-sky-400 mb-3 -mt-1">
-          Descreva sua ideia em linguagem natural e a IA ajudará a estruturar sua sugestão formalmente. (Experimental)
+          Descreva sua ideia em linguagem natural e a IA ajudará a estruturar
+          sua sugestão formalmente. (Experimental)
         </p>
         <div className="space-y-3">
           <Textarea
@@ -341,20 +447,26 @@ ${aiDraftText}
             className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-sky-500 dark:focus:border-sky-400 focus:ring-sky-500 dark:focus:ring-sky-400"
           />
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              onClick={handleAiDraftSuggestion} 
-              disabled={isAiDrafting} 
-              leftIcon={isAiDrafting ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
+            <Button
+              onClick={handleAiDraftSuggestion}
+              disabled={isAiDrafting}
+              leftIcon={
+                isAiDrafting ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Wand2 size={18} />
+                )
+              }
               className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white"
             >
-              {isAiDrafting ? 'Gerando...' : 'Gerar'}
+              {isAiDrafting ? "Gerando..." : "Gerar"}
             </Button>
-             {(aiDraftError || aiDraftText) && (
-               <Button 
+            {(aiDraftError || aiDraftText) && (
+              <Button
                 variant="outline"
-                onClick={handleClearAiDraft} 
-                disabled={isAiDrafting} 
-                leftIcon={<IconX size={18}/>}
+                onClick={handleClearAiDraft}
+                disabled={isAiDrafting}
+                leftIcon={<IconX size={18} />}
                 className="w-full sm:w-auto border-sky-500 text-sky-600 hover:bg-sky-100 dark:border-sky-600 dark:text-sky-400 dark:hover:bg-sky-800"
               >
                 Limpar Rascunho
@@ -364,8 +476,13 @@ ${aiDraftText}
         </div>
         {isAiDrafting && (
           <div className="mt-4 text-center">
-            <Loader2 size={24} className="animate-spin text-sky-600 dark:text-sky-400 inline-block" />
-            <p className="text-sm text-sky-600 dark:text-sky-400">A IA está elaborando sua sugestão...</p>
+            <Loader2
+              size={24}
+              className="animate-spin text-sky-600 dark:text-sky-400 inline-block"
+            />
+            <p className="text-sm text-sky-600 dark:text-sky-400">
+              A IA está elaborando sua sugestão...
+            </p>
           </div>
         )}
         {aiDraftError && !isAiDrafting && (
@@ -375,29 +492,39 @@ ${aiDraftText}
         )}
       </FilterPanel>
 
-
       {currentlyDisplayedSuggestions.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"> 
-            {currentlyDisplayedSuggestions.map(suggestion => {
-              const userVote = suggestionService.getUserVoteForSuggestion(suggestion.id, currentUserId);
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {currentlyDisplayedSuggestions.map((suggestion) => {
+              const userVote = suggestionService.getUserVoteForSuggestion(
+                suggestion.id,
+                currentUserId
+              );
               return (
-                  <SuggestionCard
+                <SuggestionCard
                   key={suggestion.id}
                   suggestion={suggestion}
                   currentUserVote={userVote}
                   onEdit={handleEditSuggestion}
                   onDelete={() => handleDeleteRequest(suggestion)}
                   onVote={handleVote}
-                  onViewDetails={() => handleOpenSuggestionDetailsModal(suggestion)} 
-                  />
+                  onViewDetails={() =>
+                    handleOpenSuggestionDetailsModal(suggestion)
+                  }
+                />
               );
-              })}
+            })}
           </div>
-           {hasMoreSuggestions && (
-            <div ref={loaderRef} className="flex justify-center items-center py-6">
+          {hasMoreSuggestions && (
+            <div
+              ref={loaderRef}
+              className="flex justify-center items-center py-6"
+            >
               {isLoadingMore ? (
-                <Loader2 size={32} className="animate-spin text-primary dark:text-sky-400" />
+                <Loader2
+                  size={32}
+                  className="animate-spin text-primary dark:text-sky-400"
+                />
               ) : (
                 <Button variant="outline" onClick={loadMoreSuggestions}>
                   Carregar Mais Sugestões
@@ -408,30 +535,39 @@ ${aiDraftText}
         </>
       ) : (
         <div className="text-center py-12">
-          <Lightbulb size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-3" />
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">Nenhuma sugestão encontrada.</p>
+          <Lightbulb
+            size={48}
+            className="mx-auto text-gray-400 dark:text-gray-500 mb-3"
+          />
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
+            Nenhuma sugestão encontrada.
+          </p>
           <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-1">
             <span>
-              {searchTerm ? 'Tente ajustar seus filtros ou ' : 'Você pode '}
+              {searchTerm ? "Tente ajustar seus filtros ou " : "Você pode "}
             </span>
-            <Button variant="link" onClick={() => handleAddSuggestion()} className="text-sm p-0">
+            <Button
+              variant="link"
+              onClick={() => handleAddSuggestion()}
+              className="text-sm p-0"
+            >
               adicionar uma nova sugestão
             </Button>
             <span>.</span>
           </div>
         </div>
       )}
-      
+
       <SidePanel
         isOpen={isFormPanelOpen}
         onClose={handleFormPanelClose}
-        title={suggestionToEdit ? 'Editar Sugestão' : 'Criar Nova Sugestão'}
+        title={suggestionToEdit ? "Editar Sugestão" : "Criar Nova Sugestão"}
       >
         <SuggestionForm
           suggestionToEdit={suggestionToEdit}
           onSubmit={handleFormSubmit}
           onCancel={handleFormPanelClose}
-          initialData={aiGeneratedInitialData} 
+          initialData={aiGeneratedInitialData}
         />
       </SidePanel>
 
@@ -449,7 +585,7 @@ ${aiDraftText}
           isOpen={isSuggestionDetailsModalOpen}
           onClose={handleCloseSuggestionDetailsModal}
           suggestion={selectedSuggestionForDetails}
-          currentUserId={currentUserId} 
+          currentUserId={currentUserId}
         />
       )}
     </div>
