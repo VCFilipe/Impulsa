@@ -71,7 +71,6 @@ const getAllStoredEvaluations = (): { [eventId: string]: Evaluation[] } => {
   // Special handling for "Planejamento Estratégico 2026 - Kick-off" (ID: '2025-01')
   const kickoffEventId = '2025-01';
   if (!allEvaluations[kickoffEventId] || allEvaluations[kickoffEventId].length === 0) {
-    console.log(`Initializing static evaluations for event ${kickoffEventId}`);
     allEvaluations[kickoffEventId] = createInitialKickoffEvaluations(kickoffEventId);
     // Save back to localStorage after adding initial data
     saveAllStoredEvaluations(allEvaluations);

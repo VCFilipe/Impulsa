@@ -266,8 +266,6 @@ const AIChatPage: React.FC = () => {
       const agentPrompt = prompts.find((p) => p.id === agentId);
       if (!agentPrompt) throw new Error("Agente não encontrado");
 
-      console.log(import.meta.env.GEMINI_API_KEY);
-
       if (!GEMINI_API_KEY) {
         addToast({
           type: "error",
@@ -302,10 +300,7 @@ const AIChatPage: React.FC = () => {
   );
 
   const handleSendMessage = async () => {
-    console.log("entrou aqui");
     if (!currentInput.trim() || !selectedAgentId || isLoading) return;
-
-    console.log(import.meta.env.VITE_GEMINI_API_KEY, "entrou aqui");
 
     const userMessage: ChatMessage = {
       role: "user",
