@@ -1,41 +1,48 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { Policy, PolicyCategory, PolicyFile } from '../../types';
-import { POLICY_CATEGORIES } from '../../constants';
-import Input from '../ui/Input';
-import Textarea from '../ui/Textarea';
-import Select from '../ui/Select';
-import Button from '../ui/Button';
-import { UploadCloud, Paperclip, X, Wand2, Loader2 } from 'lucide-react'; // Changed Brain to Wand2
-import { GoogleGenAI } from "@google/genai"; 
-import { useToast } from '../../contexts/ToastContext'; 
+import React, { useState, useEffect, useRef } from "react";
+import { Policy, PolicyCategory, PolicyFile } from "../../types";
+import { POLICY_CATEGORIES } from "../../constants";
+import Input from "../ui/Input";
+import Textarea from "../ui/Textarea";
+import Select from "../ui/Select";
+import Button from "../ui/Button";
+import { UploadCloud, Paperclip, X, Wand2, Loader2 } from "lucide-react"; // Changed Brain to Wand2
+import { GoogleGenAI } from "@google/genai";
+import { useToast } from "../../contexts/ToastContext";
+import { GEMINI_API_KEY } from "@/config/envs";
 
 interface PolicyFormProps {
   policyToEdit?: Policy | null;
-  onSubmit: (policy: Omit<Policy, 'id' | 'createdAt' | 'updatedAt'> | Policy) => void;
+  onSubmit: (
+    policy: Omit<Policy, "id" | "createdAt" | "updatedAt"> | Policy
+  ) => void;
   onCancel: () => void;
 }
 
 const formatFileSize = (bytes?: number): string => {
-  if (bytes === undefined || bytes === null || bytes === 0) return '';
+  if (bytes === undefined || bytes === null || bytes === 0) return "";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `(${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]})`;
 };
 
-const PolicyForm: React.FC<PolicyFormProps> = ({ policyToEdit, onSubmit, onCancel }) => {
+const PolicyForm: React.FC<PolicyFormProps> = ({
+  policyToEdit,
+  onSubmit,
+  onCancel,
+}) => {
   const initialFormState = {
-    title: '',
-    description: '',
-    category: POLICY_CATEGORIES[0], 
+    title: "",
+    description: "",
+    category: POLICY_CATEGORIES[0],
     files: [] as PolicyFile[],
   };
 
-  const [formData, setFormData] = useState<Omit<Policy, 'id' | 'createdAt' | 'updatedAt'>>(initialFormState);
+  const [formData, setFormData] =
+    useState<Omit<Policy, "id" | "createdAt" | "updatedAt">>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isImprovingText, setIsImprovingText] = useState(false); 
+  const [isImprovingText, setIsImprovingText] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -52,59 +59,77 @@ const PolicyForm: React.FC<PolicyFormProps> = ({ policyToEdit, onSubmit, onCance
     setErrors({});
   }, [policyToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (selectedFiles) {
-      const newPolicyFiles: PolicyFile[] = Array.from(selectedFiles).map(file => ({
-        id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        name: file.name,
-        type: file.type || 'unknown',
-        size: file.size,
-      }));
-      
-      setFormData(prev => {
-        const existingFileNames = new Set(prev.files.map(f => f.name));
-        const trulyNewFiles = newPolicyFiles.filter(nf => !existingFileNames.has(nf.name));
+      const newPolicyFiles: PolicyFile[] = Array.from(selectedFiles).map(
+        (file) => ({
+          id: `file-${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2, 9)}`,
+          name: file.name,
+          type: file.type || "unknown",
+          size: file.size,
+        })
+      );
+
+      setFormData((prev) => {
+        const existingFileNames = new Set(prev.files.map((f) => f.name));
+        const trulyNewFiles = newPolicyFiles.filter(
+          (nf) => !existingFileNames.has(nf.name)
+        );
         return { ...prev, files: [...prev.files, ...trulyNewFiles] };
       });
 
       if (errors.files) {
-        setErrors(prev => ({ ...prev, files: '' }));
+        setErrors((prev) => ({ ...prev, files: "" }));
       }
     }
     if (fileInputRef.current) {
-        fileInputRef.current.value = ""; 
+      fileInputRef.current.value = "";
     }
   };
 
   const handleRemoveFile = (fileIdToRemove: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      files: prev.files.filter(file => file.id !== fileIdToRemove),
+      files: prev.files.filter((file) => file.id !== fileIdToRemove),
     }));
   };
 
   const handleImproveWriting = async () => {
-    if (!process.env.API_KEY) {
-      addToast({ type: 'error', title: 'Erro de Configuração IA', message: 'A chave de API para IA não está configurada.' });
+    if (!GEMINI_API_KEY) {
+      addToast({
+        type: "error",
+        title: "Erro de Configuração IA",
+        message: "A chave de API para IA não está configurada.",
+      });
       return;
     }
     if (!formData.description.trim()) {
-      addToast({ type: 'info', title: 'Campo Vazio', message: 'Escreva uma descrição antes de usar a IA para melhorá-la.' });
+      addToast({
+        type: "info",
+        title: "Campo Vazio",
+        message: "Escreva uma descrição antes de usar a IA para melhorá-la.",
+      });
       return;
     }
 
     setIsImprovingText(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
       const prompt = `
 Você é um assistente de redação especializado em clareza e concisão para documentos formais, como políticas internas. Sua tarefa é refinar o texto a seguir, tornando-o mais claro, objetivo e profissional.
 
@@ -123,34 +148,54 @@ ${formData.description}
 Texto refinado:`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: "gemini-2.5-flash-preview-04-17",
         contents: prompt,
       });
 
       const improvedText = response.text;
-      if (improvedText && improvedText.trim() && improvedText.trim() !== formData.description.trim()) {
-        setFormData(prev => ({ ...prev, description: improvedText.trim() }));
-        addToast({ type: 'success', title: 'Texto Melhorado!', message: 'A descrição foi refinada pela IA.' });
+      if (
+        improvedText &&
+        improvedText.trim() &&
+        improvedText.trim() !== formData.description.trim()
+      ) {
+        setFormData((prev) => ({ ...prev, description: improvedText.trim() }));
+        addToast({
+          type: "success",
+          title: "Texto Melhorado!",
+          message: "A descrição foi refinada pela IA.",
+        });
       } else {
-        addToast({ type: 'info', title: 'Sem Mudanças Significativas', message: 'A IA considerou o texto original adequado ou não sugeriu alterações relevantes.' });
+        addToast({
+          type: "info",
+          title: "Sem Mudanças Significativas",
+          message:
+            "A IA considerou o texto original adequado ou não sugeriu alterações relevantes.",
+        });
       }
     } catch (error) {
       console.error("Error improving text with AI:", error);
-      addToast({ type: 'error', title: 'Erro na IA', message: 'Não foi possível melhorar o texto. Tente novamente.' });
+      addToast({
+        type: "error",
+        title: "Erro na IA",
+        message: "Não foi possível melhorar o texto. Tente novamente.",
+      });
     } finally {
       setIsImprovingText(false);
     }
   };
 
-
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.title.trim()) newErrors.title = 'Título é obrigatório.';
-    if (formData.title.trim().length > 150) newErrors.title = 'Título não pode exceder 150 caracteres.';
-    if (!formData.description.trim()) newErrors.description = 'Descrição é obrigatória.';
-    if (formData.description.trim().length > 2000) newErrors.description = 'Descrição não pode exceder 2000 caracteres.';
-    if (!formData.category) newErrors.category = 'Categoria é obrigatória.';
-    if (formData.files.length > 10) newErrors.files = 'Número máximo de 10 arquivos anexos atingido.';
+    if (!formData.title.trim()) newErrors.title = "Título é obrigatório.";
+    if (formData.title.trim().length > 150)
+      newErrors.title = "Título não pode exceder 150 caracteres.";
+    if (!formData.description.trim())
+      newErrors.description = "Descrição é obrigatória.";
+    if (formData.description.trim().length > 2000)
+      newErrors.description = "Descrição não pode exceder 2000 caracteres.";
+    if (!formData.category) newErrors.category = "Categoria é obrigatória.";
+    if (formData.files.length > 10)
+      newErrors.files = "Número máximo de 10 arquivos anexos atingido.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -160,7 +205,12 @@ Texto refinado:`;
     e.preventDefault();
     if (validate()) {
       if (policyToEdit) {
-        onSubmit({ ...formData, id: policyToEdit.id, createdAt: policyToEdit.createdAt, updatedAt: policyToEdit.updatedAt });
+        onSubmit({
+          ...formData,
+          id: policyToEdit.id,
+          createdAt: policyToEdit.createdAt,
+          updatedAt: policyToEdit.updatedAt,
+        });
       } else {
         onSubmit(formData);
       }
@@ -181,7 +231,10 @@ Texto refinado:`;
       />
       <div>
         <div className="flex justify-between items-center mb-1">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Descrição Completa
             {true && <span className="text-red-500 ml-0.5">*</span>}
           </label>
@@ -219,12 +272,15 @@ Texto refinado:`;
         name="category"
         value={formData.category}
         onChange={handleChange}
-        options={POLICY_CATEGORIES.map(cat => ({ value: cat, label: cat }))}
+        options={POLICY_CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
         required
       />
 
       <div className="space-y-3 p-4 border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-        <label htmlFor="file-upload-button" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="file-upload-button"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Anexos
         </label>
         <input
@@ -241,22 +297,39 @@ Texto refinado:`;
           type="button"
           variant="outline"
           onClick={() => fileInputRef.current?.click()}
-          leftIcon={<UploadCloud size={16}/>}
+          leftIcon={<UploadCloud size={16} />}
           className="w-full bg-white dark:bg-gray-600 dark:hover:bg-gray-500 dark:border-gray-500 dark:text-gray-200"
         >
           Selecionar Arquivos do Computador
         </Button>
-        
-        {errors.files && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.files}</p>}
+
+        {errors.files && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            {errors.files}
+          </p>
+        )}
 
         {formData.files.length > 0 && (
           <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-            {formData.files.map(file => (
-              <div key={file.id} className="flex items-center justify-between p-1.5 bg-white dark:bg-gray-600 border dark:border-gray-500 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-500 shadow-sm">
+            {formData.files.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-1.5 bg-white dark:bg-gray-600 border dark:border-gray-500 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-500 shadow-sm"
+              >
                 <div className="flex items-center truncate min-w-0">
-                  <Paperclip size={14} className="mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-200 truncate" title={file.name}>{file.name}</span>
-                  <span className="text-gray-400 dark:text-gray-400 ml-1.5 text-xs flex-shrink-0">{formatFileSize(file.size)}</span>
+                  <Paperclip
+                    size={14}
+                    className="mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0"
+                  />
+                  <span
+                    className="text-gray-700 dark:text-gray-200 truncate"
+                    title={file.name}
+                  >
+                    {file.name}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-400 ml-1.5 text-xs flex-shrink-0">
+                    {formatFileSize(file.size)}
+                  </span>
                 </div>
                 <Button
                   type="button"
@@ -279,7 +352,7 @@ Texto refinado:`;
           Cancelar
         </Button>
         <Button type="submit" variant="primary">
-          {policyToEdit ? 'Salvar Alterações' : 'Criar Política'}
+          {policyToEdit ? "Salvar Alterações" : "Criar Política"}
         </Button>
       </div>
     </form>
