@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema Interno</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class', // Enable class-based dark mode
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: '#182767',
+                hover: '#121e4a',
+              },
+              secondary: {
+                DEFAULT: '#ff3f35',
+                hover: '#e6322a',
+              },
+              // Example: if you need a lighter shade of primary for text in dark mode
+              sky: {
+                300: '#7DD3FC',
+                400: '#38BDF8',
+                500: '#0EA5E9',
+                700: '#0369A1',
+              },
+              // Example: if you need a lighter shade of red for text in dark mode
+              // red: {
+              //   400: '#F87171',
+              // }
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "@/": "/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@6",
+    "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
+    "date-fns": "https://esm.sh/date-fns@^4.1.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.511.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.1.0"
+  }
+}
+</script>
+<style>
+  /* Custom Scrollbar Styles */
+  /* For Webkit-based browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 6px;  /* Largura da barra de rolagem vertical */
+    height: 6px; /* Altura da barra de rolagem horizontal */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f9fafb; /* Tailwind gray-50 - Cor da pista */
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: #1f2937; /* Tailwind gray-800 for dark mode */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #9ca3af; /* Tailwind gray-400 - Cor do polegar */
+    border-radius: 3px;    /* Cantos arredondados para o polegar */
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: #6b7280; /* Tailwind gray-500 for dark mode */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #6b7280; /* Tailwind gray-500 - Cor do polegar ao passar o mouse */
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #4b5563; /* Tailwind gray-600 for dark mode hover */
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin; /* Deixa a barra de rolagem mais fina */
+    scrollbar-color: #9ca3af #f9fafb; /* Cor do polegar e cor da pista (gray-50) */
+  }
+  .dark * {
+     scrollbar-color: #6b7280 #1f2937; /* gray-500 gray-800 for dark mode */
+  }
+
+  /* Enhanced Autofill Styles */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important; /* Light mode background (white) */
+    -webkit-text-fill-color: #111827 !important; /* Tailwind gray-900 for light mode text */
+    transition: background-color 5000s ease-in-out 0s; /* Delay browser override */
+    font-family: inherit !important; /* Ensure font consistency */
+    font-size: inherit !important;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #374151 inset !important; /* Dark mode background (gray-700) */
+    -webkit-text-fill-color: #f3f4f6 !important; /* Tailwind gray-100 for dark mode text */
+    font-family: inherit !important; /* Ensure font consistency for dark mode */
+    font-size: inherit !important; /* Ensure font size consistency for dark mode */
+  }
+
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important; /* Light mode background */
+    -webkit-text-fill-color: #111827 !important; /* Tailwind gray-900 */
+    transition: background-color 5000s ease-in-out 0s;
+    font-family: inherit !important;
+    font-size: inherit !important;
+  }
+
+  .dark textarea:-webkit-autofill,
+  .dark textarea:-webkit-autofill:hover,
+  .dark textarea:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #374151 inset !important; /* Dark mode background (gray-700) */
+    -webkit-text-fill-color: #f3f4f6 !important; /* Tailwind gray-100 */
+    font-family: inherit !important; /* Ensure font consistency for dark mode */
+    font-size: inherit !important; /* Ensure font size consistency for dark mode */
+  }
+
+
+  /* Enhanced Table Styles */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .enhanced-table {
+    table-layout: fixed; /* Crucial for predictable truncation and column widths */
+    width: 100%;
+  }
+
+  .enhanced-table th {
+    /* position: relative; /* No longer needed for resizer */
+    overflow: hidden; /* Helps with containing th content */
+  }
+
+  .th-content-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    /* padding-right: 5px; /* No longer needed for resizer */
+  }
+
+  /* Removed .resizer, .resizer-visual, .is-resizing, .enhanced-table th.is-resizing-column styles */
+
+</style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
