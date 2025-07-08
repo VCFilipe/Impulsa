@@ -103,7 +103,6 @@ const AnnouncementsPage: React.FC = () => {
       SIDEPANEL_TRANSITION_DURATION
     );
   }, []);
-
   const handleFormSubmit = useCallback(
     (
       data:
@@ -118,9 +117,11 @@ const AnnouncementsPage: React.FC = () => {
           >
         | Announcement
     ) => {
-      const isEditing = "id" in data;
-      if (isEditing) {
-        announcementService.updateAnnouncement(data as Announcement);
+      if (announcementToEdit) {
+        announcementService.updateAnnouncement({
+          ...announcementToEdit,
+          ...data,
+        } as Announcement);
         addToast({
           type: "success",
           title: "Comunicado Atualizado!",
@@ -137,7 +138,7 @@ const AnnouncementsPage: React.FC = () => {
       loadAnnouncements(false); // Load without full loading state to avoid screen jump
       handleFormPanelClose();
     },
-    [loadAnnouncements, handleFormPanelClose, addToast]
+    [announcementToEdit, loadAnnouncements, handleFormPanelClose, addToast]
   );
 
   const handleDeleteRequest = (announcement: Announcement) => {
