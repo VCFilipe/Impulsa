@@ -4,9 +4,13 @@ import App from "./App";
 
 Sentry.init({
   dsn: "https://9e36fe0e2e67486de76c4386d695a493@o4509633751875584.ingest.us.sentry.io/4509633754693632",
-  // Setting this option to true will send default PII data to Sentry.
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
+  integrations: [Sentry.browserTracingIntegration()],
+  tracesSampleRate: 1.0,
+  tracePropagationTargets: [
+    "localhost",
+    "https://impulsa-orcin.vercel.app",
+    /^https:\/\/impulsa-orcin\.vercel\.app\/api\//,
+  ],
 });
 
 const rootElement = document.getElementById("root");
