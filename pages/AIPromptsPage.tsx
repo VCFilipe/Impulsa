@@ -359,7 +359,7 @@ Se NENHUM prompt do catálogo parecer relevante ou se a pergunta for muito vaga 
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-04-17",
+        model: "gemini-2.5-flash",
         contents: systemPrompt,
         config: {
           responseMimeType: "application/json",
@@ -493,7 +493,7 @@ O \`generatedPromptText\` deve ser completo e pronto para uso.`;
 
       const response: GenerateContentResponse = await ai.models.generateContent(
         {
-          model: "gemini-2.5-flash-preview-04-17",
+          model: "gemini-2.5-flash",
           contents: userPromptRequest, // Send user request directly as content
           config: {
             systemInstruction: systemInstructionForGenerator,
